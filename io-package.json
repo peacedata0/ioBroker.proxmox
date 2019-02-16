@@ -1,8 +1,19 @@
 {
   "common": {
     "name": "proxmox",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "news": {
+      "0.4.0": {
+        "en": "add compact mode, fixed issues",
+        "de": "kompakten Modus hinzufügen, Probleme behoben",
+        "ru": "добавить компактный режим, исправлены проблемы",
+        "pt": "Adicionar modo compacto, problemas corrigidos",
+        "nl": "voeg compacte modus toe, opgeloste problemen",
+        "fr": "ajout du mode compact, problèmes résolus",
+        "it": "aggiungi modalità compatta, problemi risolti",
+        "es": "agregar modo compacto, problemas solucionados",
+        "pl": "dodaj tryb kompaktowy, naprawione problemy",
+        "zh-cn": "添加紧凑模式，修复问题",     
       "0.3.2": {
         "en": "fixed some bugs",
         "de": "einige Fehler behoben",
@@ -88,7 +99,9 @@
     "platform": "Javascript/Node.js",
     "mode": "daemon",
     "icon": "logo.png",
+    "license": "MIT",
     "materialize": true,
+    "compact": true,
     "enabled": true,
     "extIcon": "https://raw.githubusercontent.com/iobroker-community-adapters/ioBroker.proxmox/master/admin/logo.png",
     "keywords": [ "template", "vis", "GUI", "graphical", "scada" ],

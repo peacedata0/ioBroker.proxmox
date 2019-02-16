@@ -3,8 +3,8 @@
 "use strict";
 
 // you have to require the utils module and call adapter function
-var utils = require(__dirname + '/lib/utils'); // Get common adapter utils
-var adapter = new utils.Adapter('proxmox');
+var utils = require('@iobroker/adapter-core'); // Get common adapter utils
+let adapter;
 var ProxmoxGet = require(__dirname + '/lib/proxmox');
 
 var proxmox;
@@ -26,82 +26,85 @@ function devices(name, status, type, id) {
     this.status = status;
 }
 
-
-// is called when adapter shuts down - callback has to be called under any circumstances!
-adapter.on('unload', function (callback) {
-    try {
-        adapter.log.info('cleaned everything up...');
-        callback();
-    } catch (e) {
-        callback();
-    }
-});
-
-// is called if a subscribed object changes
-adapter.on('objectChange', function (id, obj) {
-    // Warning, obj can be null if it was deleted
-    adapter.log.info('objectChange ' + id + ' ' + JSON.stringify(obj));
-});
-
-// is called if a subscribed state changes
-adapter.on('stateChange', function (id, state) {
-    // Warning, state can be null if it was deleted
-    //adapter.log.info('stateChange ' + id + ' ' + JSON.stringify(state));
-
-    // you can use the ack flag to detect if it is status (true) or command (false)
-    if (state && !state.ack) {
-        //adapter.log.info('ack is not set!');
-    }
-});
-
-// Some message was sent to adapter instance over message box. Used by email, pushover, text2speech, ...
-adapter.on('message', function (obj) {
-    if (typeof obj === 'object' && obj.message) {
-        if (obj.command === 'send') {
-            // e.g. send email or pushover or whatever
-            console.log('send command');
-
-            // Send response in callback if required
-            if (obj.callback) adapter.sendTo(obj.from, obj.command, 'Message received', obj.callback);
-        }
-    }
-});
-
-// is called when databases are connected and adapter received configuration.
-// start here!
-adapter.on('ready', function () {
-    adapter.getForeignObject('system.config', (err, obj) => {
-        if (obj && obj.native && obj.native.secret) {
-            //noinspection JSUnresolvedVariable
-            adapter.config.pwd = decrypt(obj.native.secret, adapter.config.pwd);
-        } else {
-            //noinspection JSUnresolvedVariable
-            adapter.config.pwd = decrypt('Zgfr56gFe87jJOM', adapter.config.pwd);
-        }
-
-        if (adapter.config.ip !== "192.000.000.000") {
-
-            proxmox = new ProxmoxGet(adapter);
-
-            //check Intervall 
-            adapter.config.param_requestInterval = parseInt(adapter.config.param_requestInterval, 10) || 30;
-
-            if (adapter.config.param_requestInterval < 5) {
-                adapter.log.info('Intervall <5, set to 5');
-                adapter.config.param_requestInterval = 5;
+function startAdapter(options) {
+    options = options || {};
+    Object.assign(options, {
+        name: 'proxmox',
+        unload: function (callback) {
+            // is called when adapter shuts down - callback has to be called under any circumstances!
+            try {
+                adapter.log.info('cleaned everything up...');
+                callback();
+            } catch (e) {
+                callback();
             }
+        },
+        objectChange: function (id, obj) {
+            // is called if a subscribed object changes
+            // Warning, obj can be null if it was deleted
+            adapter.log.info('objectChange ' + id + ' ' + JSON.stringify(obj));
+        },
+        stateChange: function (id, state) {
+            // Warning, state can be null if it was deleted
+            //adapter.log.info('stateChange ' + id + ' ' + JSON.stringify(state));
 
-            proxmox._getTicket(function (result) {
-                if (result === "200" || result === 200) {
-                    main();
-                    adapter.setState('info.connection', true, true);
+            // you can use the ack flag to detect if it is status (true) or command (false)
+            if (state && !state.ack) {
+                //adapter.log.info('ack is not set!');
+            }
+        },
+        message: function (obj) {
+            if (typeof obj === 'object' && obj.message) {
+                if (obj.command === 'send') {
+                    // e.g. send email or pushover or whatever
+                    console.log('send command');
+
+                    // Send response in callback if required
+                    if (obj.callback) adapter.sendTo(obj.from, obj.command, 'Message received', obj.callback);
+                }
+            }
+        },
+        ready: function () {
+            adapter.getForeignObject('system.config', (err, obj) => {
+                if (obj && obj.native && obj.native.secret) {
+                    //noinspection JSUnresolvedVariable
+                    adapter.config.pwd = decrypt(obj.native.secret, adapter.config.pwd);
                 } else {
-                    adapter.setState('info.connection', false, true);
+                    //noinspection JSUnresolvedVariable
+                    adapter.config.pwd = decrypt('Zgfr56gFe87jJOM', adapter.config.pwd);
+                }
+
+                if (adapter.config.ip !== "192.000.000.000") {
+
+                    proxmox = new ProxmoxGet(adapter);
+
+                    //check Intervall 
+                    adapter.config.param_requestInterval = parseInt(adapter.config.param_requestInterval, 10) || 30;
+
+                    if (adapter.config.param_requestInterval < 5) {
+                        adapter.log.info('Intervall <5, set to 5');
+                        adapter.config.param_requestInterval = 5;
+                    }
+
+                    proxmox._getTicket(function (result) {
+                        if (result === "200" || result === 200) {
+                            main();
+                            adapter.setState('info.connection', true, true);
+                        } else {
+                            adapter.setState('info.connection', false, true);
+                        }
+                    });
                 }
             });
-        }
+        },
+
+
+
     });
-});
+    adapter = new utils.Adapter(options);
+
+    return adapter;
+};
 
 function decrypt(key, value) {
     let result = '';
@@ -556,3 +559,11 @@ function BtoMb(val) {
 function p(vala, valb) {
     return Math.round(vala / valb * 10000) / 100
 }
+
+// If started as allInOne/compact mode => return function to create instance
+if (module && module.parent) {
+    module.exports = startAdapter;
+} else {
+    // or start the instance directly
+    startAdapter();
+} 
