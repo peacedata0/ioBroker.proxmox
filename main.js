@@ -241,44 +241,45 @@ function _createNodes(devices, callback) {
 }
 
 function _setNodes(devices, callback) {
+    if (devices) {
+        devices.forEach(function (element) {
+            adapter.log.debug("Node :  " + JSON.stringify(element));
 
-    devices.forEach(function (element) {
-        adapter.log.debug("Node :  " + JSON.stringify(element));
+            var sid = adapter.namespace + '.' + element.type + '_' + element.node;
 
-        var sid = adapter.namespace + '.' + element.type + '_' + element.node;
+            adapter.setState(sid + '.cpu', parseInt(element.cpu * 10000) / 100, true);
+            adapter.setState(sid + '.cpu_max', element.maxcpu, true);
 
-        adapter.setState(sid + '.cpu', parseInt(element.cpu * 10000) / 100, true);
-        adapter.setState(sid + '.cpu_max', element.maxcpu, true);
+            proxmox.nodeStatus(element.node, function (data) {
 
-        proxmox.nodeStatus(element.node, function (data) {
+                adapter.log.debug("Request states for node " + element.node);
 
-            adapter.log.debug("Request states for node " + element.node);
+                var node_vals = data.data;
 
-            var node_vals = data.data;
+                //check if node is empty
+                if (node_vals.uptime === undefined) return
 
-            //check if node is empty
-            if (node_vals.uptime === undefined) return
+                adapter.setState(sid + '.uptime', node_vals.uptime, true);
+                // adapter.setState(sid + '.' + name, val, true)
 
-            adapter.setState(sid + '.uptime', node_vals.uptime, true);
-            // adapter.setState(sid + '.' + name, val, true)
+                adapter.setState(sid + '.memory.used', BtoMb(node_vals.memory.used), true);
+                adapter.setState(sid + '.memory.used_lev', p(node_vals.memory.used, node_vals.memory.total), true);
+                adapter.setState(sid + '.memory.total', BtoMb(node_vals.memory.total), true);
+                adapter.setState(sid + '.memory.free', BtoMb(node_vals.memory.free), true);
 
-            adapter.setState(sid + '.memory.used', BtoMb(node_vals.memory.used), true);
-            adapter.setState(sid + '.memory.used_lev', p(node_vals.memory.used, node_vals.memory.total), true);
-            adapter.setState(sid + '.memory.total', BtoMb(node_vals.memory.total), true);
-            adapter.setState(sid + '.memory.free', BtoMb(node_vals.memory.free), true);
+                adapter.setState(sid + '.loadavg.0', parseFloat(node_vals.loadavg[0]), true);
+                adapter.setState(sid + '.loadavg.1', parseFloat(node_vals.loadavg[1]), true);
+                adapter.setState(sid + '.loadavg.2', parseFloat(node_vals.loadavg[2]), true);
 
-            adapter.setState(sid + '.loadavg.0', parseFloat(node_vals.loadavg[0]), true);
-            adapter.setState(sid + '.loadavg.1', parseFloat(node_vals.loadavg[1]), true);
-            adapter.setState(sid + '.loadavg.2', parseFloat(node_vals.loadavg[2]), true);
+                adapter.setState(sid + '.swap.used', BtoMb(node_vals.swap.used), true);
+                adapter.setState(sid + '.swap.free', BtoMb(node_vals.swap.free), true);
+                adapter.setState(sid + '.swap.total', BtoMb(node_vals.swap.total), true);
+                adapter.setState(sid + '.swap.used_lev', p(node_vals.swap.used, node_vals.swap.total), true);
 
-            adapter.setState(sid + '.swap.used', BtoMb(node_vals.swap.used), true);
-            adapter.setState(sid + '.swap.free', BtoMb(node_vals.swap.free), true);
-            adapter.setState(sid + '.swap.total', BtoMb(node_vals.swap.total), true);
-            adapter.setState(sid + '.swap.used_lev', p(node_vals.swap.used, node_vals.swap.total), true);
-
-            _setVM(element.node);
+                _setVM(element.node);
+            });
         });
-    });
+    }
 }
 
 
@@ -566,4 +567,4 @@ if (module && module.parent) {
 } else {
     // or start the instance directly
     startAdapter();
-} 
+}
