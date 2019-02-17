@@ -34,6 +34,7 @@ function startAdapter(options) {
             // is called when adapter shuts down - callback has to be called under any circumstances!
             try {
                 adapter.log.info('cleaned everything up...');
+                requestInterval = null;
                 callback();
             } catch (e) {
                 callback();
